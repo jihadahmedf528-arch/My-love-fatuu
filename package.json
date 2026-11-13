@@ -1,0 +1,14 @@
+{
+  "name": "gift-link-system",
+  "version": "1.0.0",
+  "description": "Custom shareable gift link website",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "express": "^4.21.2",
+    "firebase-admin": "^13.0.2",
+    "multer": "^1.4.5-lts.1"
+  }
+}
