@@ -1,0 +1,41 @@
+<!doctype html><html lang="bn"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Gift Admin</title><style>
+*{box-sizing:border-box}body{margin:0;background:#111;color:#f7eee4;font:15px system-ui}main{max-width:900px;margin:auto;padding:18px}.panel{background:#1d1b1a;border:1px solid #39302c;border-radius:16px;padding:16px;margin:12px 0}h1{color:#ffb5a5}label{display:block;margin:12px 0 5px;color:#e9c9bd}input,textarea,select{width:100%;padding:12px;border-radius:9px;border:1px solid #51413c;background:#100f0e;color:white}textarea{min-height:90px}button{background:#c64b57;color:white;border:0;padding:12px 16px;border-radius:10px;font-weight:700;margin:6px 4px 6px 0}button.secondary{background:#51413c}.grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}.muted{color:#bca9a1;font-size:13px}.item{padding:12px;border:1px solid #51413c;border-radius:10px;margin:8px 0}.hidden{display:none}@media(max-width:600px){.grid{grid-template-columns:1fr}}</style></head><body><main>
+<h1>🎁 Gift Link Admin</h1><p class="muted">একাধিক আলাদা Gift Link তৈরি, সম্পাদনা ও শেয়ার করো।</p>
+<section id="login" class="panel"><label>Admin Key</label><input id="key" type="password" placeholder="Render-এর ADMIN_KEY"><button onclick="login()">Login</button><p id="loginMsg" class="muted"></p></section>
+<div id="app" class="hidden">
+<div class="panel"><button onclick="newGift()">＋ নতুন Gift তৈরি</button><button class="secondary" onclick="loadGifts()">Refresh</button><div id="list"></div></div>
+<section class="panel" id="editor"><h2 id="formTitle">নতুন Gift</h2><input id="id" type="hidden">
+<div class="grid"><div><label>Gift Link-এর নাম / Slug</label><input id="slug" placeholder="birthday-surprise"></div><div><label>Gift Title</label><input id="title"></div></div>
+<div class="grid"><div><label>Intro Text</label><input id="introText"></div><div><label>From Name</label><input id="fromName"></div></div>
+<div class="grid"><div><label>To Name</label><input id="toName"></div><div><label>Cover Heading</label><input id="coverTitle"></div></div>
+<label>Cover Subtitle</label><input id="coverSubtitle">
+<label>Gallery Heading</label><input id="galleryTitle">
+<label>Letter Heading</label><input id="letterTitle">
+<label>Letter Text</label><textarea id="letterText"></textarea>
+<div class="grid"><div><label>শেষের বড় লেখা</label><input id="endingText"></div><div><label>শেষের ছোট লেখা</label><input id="endingSubtitle"></div></div>
+<div class="grid"><div><label>PIN Lock</label><select id="showPin"><option value="false">বন্ধ</option><option value="true">চালু</option></select></div><div><label>PIN (চালু করলে)</label><input id="pin" maxlength="12"></div></div>
+<label>PIN Hint</label><input id="pinHint">
+<label>ছবি আপলোড (একাধিক)</label><input id="photos" type="file" accept="image/*" multiple><div id="photoList" class="muted"></div>
+<label>Background Music (ঐচ্ছিক)</label><input id="music" type="file" accept="audio/*"><div id="musicUrl" class="muted"></div>
+<div class="grid"><div><label>Background Color</label><input id="background" type="color" value="#fff3df"></div><div><label>Link Status</label><select id="published"><option value="true">Published</option><option value="false">বন্ধ</option></select></div></div>
+<label>কোন কোন Section দেখাবে</label><div id="sections" class="grid"></div>
+<button onclick="saveGift()">Save Gift</button><button class="secondary" onclick="newGift()">Clear / New</button><p id="msg" class="muted"></p>
+</section></div></main><script>
+let key="", gifts=[], currentPhotos=[], currentMusic="";
+const $=id=>document.getElementById(id);
+const fields=["slug","title","introText","fromName","toName","coverTitle","coverSubtitle","galleryTitle","letterTitle","letterText","endingText","endingSubtitle","pinHint","pin","background"];
+const sectionNames={intro:"Intro",flowers:"Flower Animation",cover:"Cover Message",gallery:"Photo Gallery",letter:"Letter",ending:"Ending"};
+function headers(){return {"Content-Type":"application/json","x-admin-key":key}}
+async function login(){key=$("key").value;try{let r=await fetch("/api/admin/login",{method:"POST",headers:headers(),body:"{}"});if(!r.ok)throw Error("Admin Key সঠিক নয়");$("login").classList.add("hidden");$("app").classList.remove("hidden");loadGifts();newGift()}catch(e){$("loginMsg").textContent=e.message}}
+async function loadGifts(){let r=await fetch("/api/admin/gifts",{headers:headers()});if(!r.ok)return;gifts=await r.json();$("list").innerHTML=gifts.map(g=>`<div class="item"><b>${esc(g.title)}</b><div class="muted">/gift/${esc(g.slug)} · ${g.published===false?"বন্ধ":"চালু"}</div><button onclick="editGift('${g.id}')">Edit</button><button class="secondary" onclick="copyLink('${g.slug}')">Copy Link</button><button class="secondary" onclick="deleteGift('${g.id}')">Delete</button></div>`).join("")||"এখনো কোনো Gift তৈরি করা হয়নি।"}
+function esc(s){return String(s||"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]))}
+function sectionsUI(vals={}){$("sections").innerHTML=Object.entries(sectionNames).map(([k,v])=>`<label><input type="checkbox" id="sec_${k}" ${vals[k]!==false?"checked":""} style="width:auto"> ${v}</label>`).join("")}
+function newGift(){ $("id").value="";fields.forEach(f=>$(f).value=({title:"A Little Gift For You",introText:"For you, my lovely",fromName:"From me",toName:"To you",coverTitle:"From me to you",coverSubtitle:"I made something special for you",galleryTitle:"Our beautiful memories",letterTitle:"A letter for you",letterText:"Every moment with you is special.",endingText:"I will always love you",endingSubtitle:"With love, forever",pinHint:"A special date",background:"#fff3df"}[f]||""));$("showPin").value="false";$("published").value="true";currentPhotos=[];currentMusic="";renderPhotos();$("musicUrl").textContent="";sectionsUI();$("formTitle").textContent="নতুন Gift";$("msg").textContent=""}
+function editGift(id){let g=gifts.find(x=>x.id===id);if(!g)return;$("id").value=id;fields.forEach(f=>$(f).value=g[f]??"");$("showPin").value=String(!!g.showPin);$("published").value=String(g.published!==false);currentPhotos=g.photos||[];currentMusic=g.musicUrl||"";renderPhotos();$("musicUrl").textContent=currentMusic?"Music uploaded":"No music";sectionsUI(g.enabledSections||{});$("formTitle").textContent="Gift Edit"}
+function renderPhotos(){$("photoList").textContent=currentPhotos.length+"টি ছবি যুক্ত আছে"}
+async function uploadFile(file){let fd=new FormData();fd.append("file",file);let r=await fetch("/api/admin/upload",{method:"POST",headers:{"x-admin-key":key},body:fd});let d=await r.json();if(!r.ok)throw Error(d.error||"Upload failed");return d.url}
+async function saveGift(){let msg=$("msg");msg.textContent="Saving...";try{for(let f of $("photos").files)currentPhotos.push(await uploadFile(f));if($("music").files[0])currentMusic=await uploadFile($("music").files[0]);let data={};fields.forEach(f=>data[f]=$(f).value);data.showPin=$("showPin").value==="true";data.published=$("published").value==="true";data.photos=currentPhotos;data.musicUrl=currentMusic;data.enabledSections={};Object.keys(sectionNames).forEach(k=>data.enabledSections[k]=$("sec_"+k).checked);let id=$("id").value;let r=await fetch(id?"/api/admin/gifts/"+id:"/api/admin/gifts",{method:id?"PUT":"POST",headers:headers(),body:JSON.stringify(data)});let d=await r.json();if(!r.ok)throw Error(d.error||"Save failed");msg.textContent="Saved! Link: "+location.origin+"/gift/"+(d.slug||data.slug);await loadGifts();$("photos").value="";$("music").value=""}catch(e){msg.textContent=e.message}}
+async function deleteGift(id){if(!confirm("এই Gift মুছে ফেলবে?"))return;let r=await fetch("/api/admin/gifts/"+id,{method:"DELETE",headers:headers()});if(r.ok)loadGifts()}
+function copyLink(slug){navigator.clipboard.writeText(location.origin+"/gift/"+slug).then(()=>alert("Link copied"))}
+sectionsUI();
+</script></body></html>
